@@ -123,6 +123,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         transition: it.transition,
         notes: it.notes,
         label: it.label,
+        speaker: it.speaker,
       }))
       if (rows.length) {
         const { error } = await db().from('setlist_items').upsert(rows)

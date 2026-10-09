@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { DndContext, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { DraftItem, Song } from '../lib/types'
-import { TRANSITIONS, fmtDuration, transitionShort } from '../lib/music'
+import { CUES, TRANSITIONS, fmtDuration, transitionShort, uid } from '../lib/music'
+import { useStore } from '../lib/store'
 import { KeySelect } from './SongEditor'
 import Player from './Player'
-import { Icon } from './ui'
+import { Chips, Icon } from './ui'
 
 interface Props {
   items: DraftItem[]
@@ -32,6 +33,11 @@ export default function SetlistEditor({ items, songs, onChange, reasons }: Props
 
   const update = (id: string, patch: Partial<DraftItem>) => onChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)))
   const remove = (id: string) => onChange(items.filter((i) => i.id !== id))
+  const insertCue = (at: number) => {
+    const cue: DraftItem = { id: uid(), kind: 'cue', song_id: null, song_key: null, transition_type: null, transition: null, notes: null, label: null, speaker: null }
+    onChange([...items.slice(0, at), cue, ...items.slice(at)])
+    setOpen(cue.id)
+  }
   const move = (id: string, d: number) => {
     const i = items.findIndex((x) => x.id === id)
     const j = i + d
@@ -44,25 +50,33 @@ export default function SetlistEditor({ items, songs, onChange, reasons }: Props
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
         <ul className="setlist">
+          {items.length > 0 && <Inserter onClick={() => insertCue(0)} />}
           {items.map((it, idx) => {
             if (it.kind === 'song') n++
-            const next = items[idx + 1]
+            // Siguiente elemento musical, saltando los momentos hablados.
+            const next = items.slice(idx + 1).find((x) => x.kind !== 'cue')
             const showTransition = it.kind === 'song' && next?.kind === 'song' && (it.transition_type || it.transition)
             return (
-              <Row
-                key={it.id}
-                item={it}
-                num={n}
-                song={it.song_id ? songs.get(it.song_id) : undefined}
-                open={open === it.id}
-                isLast={!next || next.kind === 'break'}
-                reasons={it.song_id ? reasons?.get(it.song_id) : undefined}
-                onToggle={() => setOpen(open === it.id ? null : it.id)}
-                onUpdate={(p) => update(it.id, p)}
-                onRemove={() => remove(it.id)}
-                onMove={(d) => move(it.id, d)}
-                transition={showTransition ? [transitionShort(it.transition_type), it.transition].filter(Boolean).join(': ') : null}
-              />
+              <Fragment key={it.id}>
+                {it.kind === 'cue' ? (
+                  <CueRow item={it} open={open === it.id} onToggle={() => setOpen(open === it.id ? null : it.id)} onUpdate={(p) => update(it.id, p)} onRemove={() => remove(it.id)} />
+                ) : (
+                  <Row
+                    item={it}
+                    num={n}
+                    song={it.song_id ? songs.get(it.song_id) : undefined}
+                    open={open === it.id}
+                    isLast={!next || next.kind === 'break'}
+                    reasons={it.song_id ? reasons?.get(it.song_id) : undefined}
+                    onToggle={() => setOpen(open === it.id ? null : it.id)}
+                    onUpdate={(p) => update(it.id, p)}
+                    onRemove={() => remove(it.id)}
+                    onMove={(d) => move(it.id, d)}
+                    transition={showTransition ? [transitionShort(it.transition_type), it.transition].filter(Boolean).join(': ') : null}
+                  />
+                )}
+                {items[idx + 1]?.kind !== 'cue' && <Inserter onClick={() => insertCue(idx + 1)} />}
+              </Fragment>
             )
           })}
         </ul>
@@ -187,5 +201,73 @@ function Row({
       </li>
       {transition && !open && <li className="transition">{transition}</li>}
     </>
+  )
+}
+
+function Inserter({ onClick }: { onClick: () => void }) {
+  return (
+    <li className="inserter">
+      <button type="button" onClick={onClick}>
+        <Icon.plus /> momento
+      </button>
+    </li>
+  )
+}
+
+function CueRow({ item, open, onToggle, onUpdate, onRemove }: { item: DraftItem; open: boolean; onToggle: () => void; onUpdate: (p: Partial<DraftItem>) => void; onRemove: () => void }) {
+  const { members } = useStore()
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+  const preset = item.label && CUES.includes(item.label) ? item.label : null
+  return (
+    <li ref={setNodeRef} style={style} className={`sl-item sl-cue${isDragging ? ' dragging' : ''}`}>
+      <div className="sl-main">
+        <button className="handle" {...attributes} {...listeners} aria-label="Arrastrar">
+          <Icon.grip />
+        </button>
+        <span className="cue-icon" aria-hidden>
+          <Icon.mic />
+        </span>
+        <button className="grow" style={{ all: 'unset', cursor: 'pointer', minWidth: 0, flex: 1 }} onClick={onToggle} aria-expanded={open}>
+          <div className="sl-title">{item.label || 'Momento entre canciones'}</div>
+          {(item.speaker || item.notes) && <div className="sl-sub">{[item.speaker, item.notes].filter(Boolean).join(' · ')}</div>}
+        </button>
+        <button className="btn icon ghost" onClick={onToggle} aria-label="Editar momento">
+          <Icon.edit />
+        </button>
+      </div>
+      {open && (
+        <div className="sl-edit stack">
+          <div className="field">
+            Qué ocurre
+            <Chips options={CUES} value={preset ? [preset] : []} single onChange={(v) => onUpdate({ label: v[0] ?? null })} />
+          </div>
+          <label className="field">
+            O escríbelo
+            <input value={item.label ?? ''} placeholder="Ej: Sorteo de la rifa" onChange={(e) => onUpdate({ label: e.target.value || null })} />
+          </label>
+          <label className="field">
+            Quién lo hace
+            <select value={item.speaker ?? ''} onChange={(e) => onUpdate({ speaker: e.target.value || null })}>
+              <option value="">—</option>
+              <option>Toda la banda</option>
+              {members.map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+              {item.speaker && item.speaker !== 'Toda la banda' && !members.includes(item.speaker) && <option>{item.speaker}</option>}
+            </select>
+          </label>
+          <label className="field">
+            Detalle
+            <textarea value={item.notes ?? ''} placeholder="Ej: nombrar a Ana y Pedro, contar que el tema es de 1969…" onChange={(e) => onUpdate({ notes: e.target.value || null })} />
+          </label>
+          <div className="row end">
+            <button className="btn small danger" onClick={onRemove}>
+              <Icon.trash /> Quitar momento
+            </button>
+          </div>
+        </div>
+      )}
+    </li>
   )
 }

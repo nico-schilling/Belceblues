@@ -38,6 +38,21 @@ export const TRANSITIONS: { value: string; label: string; short: string }[] = [
   { value: 'talk', label: 'Presentación / speech', short: 'SPEECH' },
 ]
 
+/** Momentos típicos entre canciones (presentaciones, saludos, uniones…). */
+export const CUES = [
+  'Presentación de la banda',
+  'Presentar el tema',
+  'Saludar a los anfitriones',
+  'Unir los temas en el mismo tono',
+  'Agradecer al público',
+  'Dedicatoria',
+  'Brindis',
+  'Invitar a bailar',
+  'Presentar a un invitado',
+  'Afinar / cambio de instrumento',
+  'Despedida',
+]
+
 export const transitionShort = (v: string | null) => TRANSITIONS.find((t) => t.value === v)?.short ?? ''
 
 export function fmtDuration(ms: number | null | undefined): string {

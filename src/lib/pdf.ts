@@ -19,6 +19,7 @@ const INK: [number, number, number] = [26, 20, 16]
 const RUST: [number, number, number] = [156, 42, 26]
 const AMBER: [number, number, number] = [184, 116, 30]
 const MUTED: [number, number, number] = [95, 85, 75]
+const BLUE: [number, number, number] = [47, 86, 112]
 
 export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Map<string, Song>, mode: PdfMode): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
@@ -93,6 +94,31 @@ export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Ma
       y += 14
       return
     }
+    if (it.kind === 'cue') {
+      const head = clean(`${(it.label || 'Momento').toUpperCase()}${it.speaker ? `  -  ${it.speaker}` : ''}`)
+      doc.setFont('times', 'italic')
+      doc.setFontSize(stage ? 12 : 10)
+      const lines: string[] = it.notes ? doc.splitTextToSize(clean(it.notes), W - 2 * M - 22) : []
+      const lh = stage ? 5.2 : 4.3
+      const h = (stage ? 8 : 6.5) + lines.length * lh + 2
+      ensure(h + 3)
+      doc.setFillColor(232, 238, 243)
+      doc.rect(M + 14, y - 1, W - 2 * M - 14, h, 'F')
+      doc.setFillColor(...BLUE)
+      doc.rect(M + 14, y - 1, 1.2, h, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(stage ? 12 : 9.5)
+      doc.setTextColor(...BLUE)
+      doc.text(`» ${head}`, M + 18, y + (stage ? 4.6 : 3.6))
+      if (lines.length) {
+        doc.setFont('times', 'italic')
+        doc.setFontSize(stage ? 12 : 10)
+        doc.setTextColor(...INK)
+        doc.text(lines, M + 18, y + (stage ? 9.6 : 7.8))
+      }
+      y += h + 3
+      return
+    }
     const song = it.song_id ? songs.get(it.song_id) : undefined
     n++
     const titleSize = stage ? 22 : 14
@@ -101,7 +127,8 @@ export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Ma
     doc.setFontSize(titleSize)
     const titleLines: string[] = doc.splitTextToSize(clean(song?.title ?? '(canción eliminada)'), titleW)
     const lineH = titleSize * 0.42
-    const isLast = idx === items.length - 1 || items[idx + 1]?.kind === 'break'
+    const nextMusic = items.slice(idx + 1).find((x) => x.kind !== 'cue')
+    const isLast = !nextMusic || nextMusic.kind === 'break'
     const trans = !isLast && (it.transition_type || it.transition) ? clean([transitionShort(it.transition_type), it.transition].filter(Boolean).join(': ')) : ''
     doc.setFont('times', 'italic')
     doc.setFontSize(stage ? 12 : 10)

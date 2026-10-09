@@ -174,9 +174,9 @@ export function propose(songs: Song[], a: Audience, seed = Date.now()): Proposal
       slots[i] = remaining.splice(best, 1)[0]
     }
     for (const p of slots as Pick[])
-      items.push({ id: uid(), kind: 'song', song_id: p.song.id, song_key: p.song.default_key, transition_type: null, transition: null, notes: p.song.notes, label: null })
+      items.push({ id: uid(), kind: 'song', song_id: p.song.id, song_key: p.song.default_key, transition_type: null, transition: null, notes: p.song.notes, label: null, speaker: null })
     if (s < sets - 1)
-      items.push({ id: uid(), kind: 'break', song_id: null, song_key: null, transition_type: null, transition: null, notes: null, label: `Fin del set ${s + 1} — intermedio` })
+      items.push({ id: uid(), kind: 'break', song_id: null, song_key: null, transition_type: null, transition: null, notes: null, label: `Fin del set ${s + 1} — intermedio`, speaker: null })
   })
 
   return { items, picks: new Map(chosen.map((p) => [p.song.id, p])), totalMs: total }
