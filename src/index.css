@@ -787,3 +787,19 @@ input[type='checkbox'] {
   height: 20px;
   color: #ffc1b3;
 }
+
+/* ---------- Reproductor ---------- */
+.player {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: #0c0907;
+}
+.player.spotify {
+  height: 80px;
+}
+.player.youtube {
+  aspect-ratio: 16 / 9;
+  height: auto;
+}

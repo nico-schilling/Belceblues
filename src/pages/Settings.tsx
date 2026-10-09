@@ -26,7 +26,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
 })
 
 export default function Settings({ autoSync, onAutoSyncDone }: { autoSync: boolean; onAutoSyncDone: () => void }) {
-  const { refresh } = useStore()
+  const { refresh, members, saveMembers } = useStore()
+  const [newMember, setNewMember] = useState('')
   const [s, setS] = useState<SpotifySettings | null>(null)
   const [clientId, setClientId] = useState('')
   const [playlist, setPlaylist] = useState('')
@@ -172,6 +173,43 @@ export default function Settings({ autoSync, onAutoSyncDone }: { autoSync: boole
           )}
         </div>
         {s.lastSync && <p className="small muted">Última sincronización: {new Date(s.lastSync).toLocaleString('es')}</p>}
+      </div>
+
+      <div className="card stack">
+        <h2>Integrantes</h2>
+        <p className="small muted">Se usan para indicar quién canta la voz principal de cada canción.</p>
+        <div className="chips">
+          {members.map((m) => (
+            <span key={m} className="chip on">
+              {m}{' '}
+              <button
+                type="button"
+                aria-label={`Quitar ${m}`}
+                style={{ all: 'unset', cursor: 'pointer', marginLeft: 4 }}
+                onClick={() => confirm(`¿Quitar a ${m} de la lista? Las canciones que ya lo tienen como voz no cambian.`) && saveMembers(members.filter((x) => x !== m)).catch((e) => toast(errMsg(e)))}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          {!members.length && <span className="small muted">Todavía no hay integrantes cargados.</span>}
+        </div>
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const n = newMember.trim()
+            if (!n || members.includes(n)) return
+            saveMembers([...members, n])
+              .then(() => setNewMember(''))
+              .catch((er) => toast(errMsg(er)))
+          }}
+        >
+          <input className="grow" value={newMember} placeholder="Nombre" onChange={(e) => setNewMember(e.target.value)} />
+          <button className="btn small" disabled={!newMember.trim()}>
+            <Icon.plus /> Agregar
+          </button>
+        </form>
       </div>
 
       <div className="card stack">

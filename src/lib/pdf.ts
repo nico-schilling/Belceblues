@@ -107,7 +107,8 @@ export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Ma
     doc.setFontSize(stage ? 12 : 10)
     const noteLines: string[] = it.notes ? doc.splitTextToSize(clean(it.notes), W - 2 * M - 14) : []
     const noteH = noteLines.length * (stage ? 5.2 : 4.3)
-    const blockH = titleLines.length * lineH + (stage ? 2 : 7) + noteH + (trans ? 6 : 0) + 4
+    const voice = song?.singers?.length ? clean(`Voz: ${song.singers.join(', ')}`) : ''
+    const blockH = titleLines.length * lineH + (stage ? 2 : 7) + (stage && voice ? 5.5 : 0) + noteH + (trans ? 6 : 0) + 4
     ensure(blockH)
 
     const top = y
@@ -134,8 +135,15 @@ export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Ma
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
       doc.setTextColor(...MUTED)
-      doc.text(clean(`${song.artist}  ·  ${fmtDuration(song.duration_ms)}`), M + 14, cy + 3.2)
+      doc.text(clean([song.artist, fmtDuration(song.duration_ms), voice].filter(Boolean).join('  ·  ')), M + 14, cy + 3.2)
       cy += 5
+    }
+    if (stage && voice) {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(...AMBER)
+      doc.text(voice.toUpperCase(), M + 14, cy + 3.5)
+      cy += 5.5
     }
     if (noteLines.length) {
       doc.setFont('times', 'italic')

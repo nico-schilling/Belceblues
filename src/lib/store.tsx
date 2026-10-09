@@ -20,6 +20,8 @@ interface Store {
   loadItems: (eventId: string) => Promise<SetlistItem[]>
   saveItems: (eventId: string, items: DraftItem[]) => Promise<void>
   lastRemoteChange: number
+  members: string[]
+  saveMembers: (m: string[]) => Promise<void>
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -32,16 +34,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRemoteChange, setLastRemoteChange] = useState(0)
+  const [members, setMembers] = useState<string[]>([])
   const channel = useRef<RealtimeChannel | null>(null)
 
   const refresh = useCallback(async () => {
     try {
-      const [s, e] = await Promise.all([
+      const [s, e, m] = await Promise.all([
         db().from('songs').select('*').order('playlist_position', { ascending: true, nullsFirst: false }).order('title'),
         db().from('events').select('*').order('event_date', { ascending: false, nullsFirst: true }),
+        db().from('settings').select('value').eq('key', 'members').maybeSingle(),
       ])
       if (s.error) throw s.error
       if (e.error) throw e.error
+      setMembers(Array.isArray(m.data?.value) ? (m.data.value as string[]) : [])
       setSongs(s.data as Song[])
       setEvents(e.data as EventRow[])
       setError(null)
@@ -172,6 +177,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return data as SetlistItem[]
   }, [])
 
+  const saveMembers = useCallback(
+    async (m: string[]) => {
+      setMembers(m)
+      const { error } = await db().from('settings').upsert({ key: 'members', value: m })
+      if (error) throw error
+      notify()
+    },
+    [notify],
+  )
+
   const songMap = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs])
 
   const value: Store = {
@@ -191,6 +206,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     loadItems,
     saveItems,
     lastRemoteChange,
+    members,
+    saveMembers,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

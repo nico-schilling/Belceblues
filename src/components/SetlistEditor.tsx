@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { DraftItem, Song } from '../lib/types'
 import { TRANSITIONS, fmtDuration, transitionShort } from '../lib/music'
 import { KeySelect } from './SongEditor'
+import Player from './Player'
 import { Icon } from './ui'
 
 interface Props {
@@ -127,6 +128,7 @@ function Row({
             <div className="sl-title">{song?.title ?? '(canción eliminada)'}</div>
             <div className="sl-sub">
               {song?.artist} {song && `· ${fmtDuration(song.duration_ms)}`}
+              {song?.singers?.length ? ` · 🎤 ${song.singers.join(', ')}` : ''}
               {item.notes && ' · 📝'}
             </div>
             {reasons && reasons.length > 0 && <div className="reason">{reasons.slice(0, 3).join(' · ')}</div>}
@@ -138,6 +140,7 @@ function Row({
         </div>
         {open && (
           <div className="sl-edit stack">
+            {song && <Player song={song} />}
             <div className="grid2">
               <label className="field">
                 Tono para este show
