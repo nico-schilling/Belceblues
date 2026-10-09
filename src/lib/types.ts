@@ -18,6 +18,8 @@ export interface Song {
   moods: string[]
   danceable: boolean
   well_known: boolean
+  singable: boolean
+  singers: string[]
   created_at: string
   updated_at: string
 }

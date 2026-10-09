@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { Song } from '../lib/types'
 import { KEYS, MOODS, STYLES, fmtDuration } from '../lib/music'
+import { useStore } from '../lib/store'
+import Player from './Player'
 import { Chips, Icon, Modal } from './ui'
 
-export type SongForm = Pick<Song, 'title' | 'artist' | 'year' | 'duration_ms' | 'default_key' | 'notes' | 'energy' | 'style' | 'moods' | 'danceable' | 'well_known'>
+export type SongForm = Pick<Song, 'title' | 'artist' | 'year' | 'duration_ms' | 'default_key' | 'notes' | 'energy' | 'style' | 'moods' | 'danceable' | 'well_known' | 'singable' | 'singers' | 'spotify_url'>
 
 export function KeySelect({ value, onChange, placeholder = 'Sin definir' }: { value: string | null; onChange: (v: string | null) => void; placeholder?: string }) {
   return (
@@ -38,7 +40,19 @@ export default function SongEditor({ song, onClose, onSave, onDelete }: { song: 
     moods: song?.moods ?? [],
     danceable: song?.danceable ?? false,
     well_known: song?.well_known ?? false,
+    singable: song?.singable ?? false,
+    singers: song?.singers ?? [],
+    spotify_url: song?.spotify_url ?? null,
   })
+  const { members, saveMembers } = useStore()
+  const [newMember, setNewMember] = useState('')
+  const addMember = async () => {
+    const n = newMember.trim()
+    if (!n) return
+    if (!members.includes(n)) await saveMembers([...members, n])
+    if (!f.singers.includes(n)) set('singers', [...f.singers, n])
+    setNewMember('')
+  }
   const [busy, setBusy] = useState(false)
   const set = <K extends keyof SongForm>(k: K, v: SongForm[K]) => setF((p) => ({ ...p, [k]: v }))
   const minutes = f.duration_ms ? Math.round(f.duration_ms / 1000) : ''
@@ -46,7 +60,7 @@ export default function SongEditor({ song, onClose, onSave, onDelete }: { song: 
   const save = async () => {
     setBusy(true)
     try {
-      await onSave({ ...f, notes: f.notes?.trim() || null })
+      await onSave({ ...f, notes: f.notes?.trim() || null, spotify_url: f.spotify_url?.trim() || null })
       onClose()
     } finally {
       setBusy(false)
@@ -112,6 +126,13 @@ export default function SongEditor({ song, onClose, onSave, onDelete }: { song: 
             {!song!.in_playlist && <span className="tag warn"> fuera de la playlist</span>}
           </p>
         )}
+        {manual && (
+          <label className="field">
+            Link para escuchar (Spotify o YouTube)
+            <input value={f.spotify_url ?? ''} placeholder="https://open.spotify.com/track/… o https://youtu.be/…" onChange={(e) => set('spotify_url', e.target.value)} />
+          </label>
+        )}
+        <Player song={{ spotify_id: song?.spotify_id ?? null, spotify_url: f.spotify_url, title: f.title }} />
         <div className="grid2">
           <label className="field">
             Tono habitual de la banda
@@ -135,12 +156,31 @@ export default function SongEditor({ song, onClose, onSave, onDelete }: { song: 
           Ánimo
           <Chips options={MOODS} value={f.moods} onChange={(v) => set('moods', v)} />
         </div>
+        <div className="field">
+          Voz principal
+          {members.length > 0 && <Chips options={members} value={f.singers} onChange={(v) => set('singers', v)} />}
+          <div className="row">
+            <input
+              className="grow"
+              value={newMember}
+              placeholder={members.length ? 'Agregar otro integrante…' : 'Nombre del integrante que canta'}
+              onChange={(e) => setNewMember(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMember())}
+            />
+            <button type="button" className="btn small" disabled={!newMember.trim()} onClick={addMember}>
+              <Icon.plus /> Agregar
+            </button>
+          </div>
+        </div>
         <div className="row">
           <label className="row">
             <input type="checkbox" checked={f.well_known} onChange={(e) => set('well_known', e.target.checked)} /> Muy conocida / hit
           </label>
           <label className="row">
             <input type="checkbox" checked={f.danceable} onChange={(e) => set('danceable', e.target.checked)} /> Bailable
+          </label>
+          <label className="row">
+            <input type="checkbox" checked={f.singable} onChange={(e) => set('singable', e.target.checked)} /> Cantable
           </label>
         </div>
         <label className="field">

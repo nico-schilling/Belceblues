@@ -85,6 +85,10 @@ export function scoreSong(song: Song, a: Audience, rand: () => number): Pick {
     score += party ? 1.8 : 0.8
     reasons.push('conocida')
   }
+  if (song.singable && (party || a.moods.includes('Nostálgico'))) {
+    score += 1.2
+    reasons.push('cantable')
+  }
   if (song.danceable && party) {
     score += 1.5
     reasons.push('bailable')

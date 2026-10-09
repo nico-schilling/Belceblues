@@ -97,6 +97,7 @@ export default function Songs() {
                     {s.artist} · {fmtDuration(s.duration_ms)}
                     {s.style && ` · ${s.style}`}
                     {s.well_known && ' · ★'}
+                    {s.singers.length > 0 && ` · 🎤 ${s.singers.join(', ')}`}
                   </div>
                 </span>
                 {s.default_key ? <span className="tag key">{s.default_key}</span> : <span className="tag">tono?</span>}
