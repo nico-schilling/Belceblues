@@ -228,3 +228,19 @@ export function downloadPdf(doc: jsPDF, name: string) {
   // Safari necesita que la URL siga viva un rato después del click.
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
+
+/**
+ * Abre el menú de compartir del teléfono con el PDF adjunto (para elegir WhatsApp).
+ * Devuelve 'unsupported' si el navegador no puede compartir archivos (ej: computador).
+ */
+export async function sharePdfFile(doc: jsPDF, name: string, text: string): Promise<'shared' | 'cancelled' | 'unsupported'> {
+  const file = new File([doc.output('blob')], name, { type: 'application/pdf' })
+  if (!navigator.canShare?.({ files: [file] })) return 'unsupported'
+  try {
+    await navigator.share({ files: [file], text })
+    return 'shared'
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return 'cancelled'
+    throw e
+  }
+}

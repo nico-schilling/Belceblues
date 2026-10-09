@@ -859,3 +859,11 @@ input[type='checkbox'] {
   width: 20px;
   height: 20px;
 }
+.btn.whatsapp {
+  background: linear-gradient(180deg, #2fbf5f, #1e8f45);
+  border-color: #3fd171;
+  color: #f2fff6;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 3px 0 #135c2c;
+}
