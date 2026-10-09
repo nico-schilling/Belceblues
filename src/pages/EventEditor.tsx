@@ -20,6 +20,7 @@ export default function EventEditor() {
   const [editingInfo, setEditingInfo] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pdfLib = useRef<typeof import('../lib/pdf') | null>(null)
   const nav = useNavigate()
   const toast = useToast()
 
@@ -97,12 +98,41 @@ export default function EventEditor() {
     change([...items, { id: uid(), kind: 'break', song_id: null, song_key: null, transition_type: null, transition: null, notes: null, label: `Fin del set ${sets} — intermedio`, speaker: null }])
   }
 
+  // El módulo de PDF se precarga al abrir el diálogo: compartir debe ocurrir justo después del toque.
+  const openPdf = () => {
+    setPdfOpen(true)
+    import('../lib/pdf').then((m) => (pdfLib.current = m))
+  }
+
+  const sendWhatsApp = async (mode: PdfMode) => {
+    try {
+      const lib = pdfLib.current ?? (await import('../lib/pdf'))
+      const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
+      const doc = lib.buildSetlistPdf(event, full, songMap, mode)
+      const name = lib.pdfFileName(event, mode)
+      const text = `Setlist ${event.name} · ${fmtDate(event.event_date)}`
+      const r = await lib.sharePdfFile(doc, name, text)
+      if (r === 'unsupported') {
+        // En computador no se pueden adjuntar archivos: se descarga y se abre WhatsApp para adjuntarlo.
+        lib.downloadPdf(doc, name)
+        window.open(`https://wa.me/?text=${encodeURIComponent(`${text} (adjunto el PDF)`)}`, '_blank', 'noopener')
+        toast('PDF descargado: adjúntalo en el chat de WhatsApp')
+      }
+      setPdfOpen(false)
+    } catch (e) {
+      toast(`No se pudo compartir: ${errMsg(e)}`)
+    }
+  }
+
   const pdf = async (mode: PdfMode) => {
-    const { buildSetlistPdf, pdfFileName, sharePdf } = await import('../lib/pdf')
-    const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
-    const doc = buildSetlistPdf(event, full, songMap, mode)
-    const r = await sharePdf(doc, pdfFileName(event), `Setlist ${event.name}`)
-    if (r === 'downloaded') toast('PDF descargado')
+    try {
+      const { buildSetlistPdf, pdfFileName, downloadPdf } = await import('../lib/pdf')
+      const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
+      downloadPdf(buildSetlistPdf(event, full, songMap, mode), pdfFileName(event, mode))
+      toast('PDF descargado')
+    } catch (e) {
+      toast(`No se pudo generar el PDF: ${errMsg(e)}`)
+    }
     setPdfOpen(false)
   }
 
@@ -157,7 +187,7 @@ export default function EventEditor() {
           {missingKey > 0 && <span className="tag warn">{missingKey} sin tono</span>}
         </div>
         <div className="row" style={{ marginTop: 12 }}>
-          <button className="btn amber" onClick={() => setPdfOpen(true)} disabled={!items.length}>
+          <button className="btn amber" onClick={openPdf} disabled={!items.length}>
             <Icon.pdf /> PDF
           </button>
           <button className="btn" onClick={shareLink}>
@@ -203,7 +233,7 @@ export default function EventEditor() {
       {picking && <SongPicker songs={songs} already={already} onClose={() => setPicking(false)} onAdd={addSongs} />}
       {editingInfo && <EventInfoModal event={event} onClose={() => setEditingInfo(false)} onSave={(p) => saveEvent(event.id, p)} />}
       {pdfOpen && (
-        <Modal title="Imprimir setlist" onClose={() => setPdfOpen(false)}>
+        <Modal title="PDF del setlist" onClose={() => setPdfOpen(false)}>
           <div className="stack">
             <button className="btn primary" style={{ width: '100%' }} onClick={() => pdf('stage')}>
               <Icon.pdf /> Para el escenario (letra grande)
@@ -216,6 +246,20 @@ export default function EventEditor() {
             </button>
             <p className="small muted" style={{ marginTop: 4 }}>
               Incluye artista original, duración y notas del show. Ideal para ensayar o mandar al sonidista.
+            </p>
+            <div className="section-label" style={{ marginTop: 18 }}>
+              Enviar por WhatsApp
+            </div>
+            <div className="row">
+              <button className="btn whatsapp grow" onClick={() => sendWhatsApp('stage')}>
+                <Icon.whatsapp /> Escenario
+              </button>
+              <button className="btn whatsapp grow" onClick={() => sendWhatsApp('detail')}>
+                <Icon.whatsapp /> Detallado
+              </button>
+            </div>
+            <p className="small muted" style={{ marginTop: 4 }}>
+              En el teléfono se abre el menú para compartir con el PDF adjunto: elige WhatsApp y el chat de la banda.
             </p>
           </div>
         </Modal>
