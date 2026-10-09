@@ -205,27 +205,26 @@ export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Ma
   return doc
 }
 
-export function pdfFileName(event: EventRow) {
+export function pdfFileName(event: EventRow, mode: PdfMode) {
   const slug = event.name
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-  return `setlist-${slug || 'belceblues'}${event.event_date ? '-' + event.event_date : ''}.pdf`
+  return `setlist-${slug || 'belceblues'}${event.event_date ? '-' + event.event_date : ''}-${mode === 'stage' ? 'escenario' : 'detallado'}.pdf`
 }
 
-export async function sharePdf(doc: jsPDF, name: string, title: string): Promise<'shared' | 'downloaded'> {
-  const blob = doc.output('blob')
-  const file = new File([blob], name, { type: 'application/pdf' })
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title })
-      return 'shared'
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return 'shared'
-    }
-  }
-  doc.save(name)
-  return 'downloaded'
+/** Descarga el PDF directamente al dispositivo. */
+export function downloadPdf(doc: jsPDF, name: string) {
+  const url = URL.createObjectURL(doc.output('blob'))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  // Safari necesita que la URL siga viva un rato después del click.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }

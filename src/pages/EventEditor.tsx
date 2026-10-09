@@ -98,11 +98,14 @@ export default function EventEditor() {
   }
 
   const pdf = async (mode: PdfMode) => {
-    const { buildSetlistPdf, pdfFileName, sharePdf } = await import('../lib/pdf')
-    const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
-    const doc = buildSetlistPdf(event, full, songMap, mode)
-    const r = await sharePdf(doc, pdfFileName(event), `Setlist ${event.name}`)
-    if (r === 'downloaded') toast('PDF descargado')
+    try {
+      const { buildSetlistPdf, pdfFileName, downloadPdf } = await import('../lib/pdf')
+      const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
+      downloadPdf(buildSetlistPdf(event, full, songMap, mode), pdfFileName(event, mode))
+      toast('PDF descargado')
+    } catch (e) {
+      toast(`No se pudo generar el PDF: ${errMsg(e)}`)
+    }
     setPdfOpen(false)
   }
 
