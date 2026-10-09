@@ -86,7 +86,7 @@ export default function EventEditor() {
   const addSongs = (ids: string[]) => {
     const add: DraftItem[] = ids.map((sid) => {
       const s = songMap.get(sid)
-      return { id: uid(), kind: 'song', song_id: sid, song_key: s?.default_key ?? null, transition_type: null, transition: null, notes: s?.notes ?? null, label: null }
+      return { id: uid(), kind: 'song', song_id: sid, song_key: s?.default_key ?? null, transition_type: null, transition: null, notes: s?.notes ?? null, label: null, speaker: null }
     })
     change([...items, ...add])
     setPicking(false)
@@ -94,7 +94,7 @@ export default function EventEditor() {
 
   const addBreak = () => {
     const sets = items.filter((i) => i.kind === 'break').length + 1
-    change([...items, { id: uid(), kind: 'break', song_id: null, song_key: null, transition_type: null, transition: null, notes: null, label: `Fin del set ${sets} — intermedio` }])
+    change([...items, { id: uid(), kind: 'break', song_id: null, song_key: null, transition_type: null, transition: null, notes: null, label: `Fin del set ${sets} — intermedio`, speaker: null }])
   }
 
   const pdf = async (mode: PdfMode) => {

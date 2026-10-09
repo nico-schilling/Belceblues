@@ -105,6 +105,12 @@ export const Icon = {
       <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
     </svg>
   ),
+  mic: () => (
+    <svg viewBox="0 0 24 24" {...P}>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8" />
+    </svg>
+  ),
   spotify: () => (
     <svg viewBox="0 0 24 24" {...P}>
       <circle cx="12" cy="12" r="10" />

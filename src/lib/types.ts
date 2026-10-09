@@ -46,7 +46,7 @@ export interface EventRow {
   updated_at: string
 }
 
-export type ItemKind = 'song' | 'break'
+export type ItemKind = 'song' | 'break' | 'cue'
 
 export interface SetlistItem {
   id: string
@@ -59,6 +59,8 @@ export interface SetlistItem {
   transition: string | null
   notes: string | null
   label: string | null
+  /** Momento entre canciones: quién habla o lo lleva adelante. */
+  speaker: string | null
 }
 
 /** Ítem en edición (puede no estar guardado aún). */
