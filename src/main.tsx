@@ -4,6 +4,13 @@ import './index.css'
 import App from './App'
 import { handleRedirect } from './lib/spotify'
 
+// Si la app quedó con una versión vieja en caché y falta un archivo, recarga una vez para tomar la nueva.
+window.addEventListener('vite:preloadError', () => {
+  if (sessionStorage.getItem('belceblues.reloaded')) return
+  sessionStorage.setItem('belceblues.reloaded', '1')
+  location.reload()
+})
+
 async function boot() {
   let spotifyReturned = false
   let spotifyError: string | null = null

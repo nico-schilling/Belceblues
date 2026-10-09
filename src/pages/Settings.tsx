@@ -236,6 +236,22 @@ export default function Settings({ autoSync, onAutoSyncDone }: { autoSync: boole
 
       <div className="card stack">
         <h2>Sesión</h2>
+        <p className="small muted">
+          Versión de la app: <b>{__APP_VERSION__}</b> (UTC)
+        </p>
+        <button
+          className="btn"
+          onClick={async () => {
+            try {
+              const reg = await navigator.serviceWorker?.getRegistration()
+              await reg?.update()
+            } finally {
+              location.reload()
+            }
+          }}
+        >
+          <Icon.sync /> Buscar actualización
+        </button>
         <p className="small muted">Este dispositivo está conectado con el código de la banda.</p>
         <button
           className="btn danger"

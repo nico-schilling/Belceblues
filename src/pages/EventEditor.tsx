@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { errMsg, useStore } from '../lib/store'
 import type { DraftItem, EventRow } from '../lib/types'
 import { fmtDate, fmtTotal, uid } from '../lib/music'
-import type { PdfMode } from '../lib/pdf'
+import { buildSetlistPdf, downloadPdf, pdfFileName, sharePdfFile, type PdfMode } from '../lib/pdf'
 import SetlistEditor from '../components/SetlistEditor'
 import SongPicker from '../components/SongPicker'
 import { Icon, Modal, Spinner, useToast } from '../components/ui'
@@ -19,8 +19,8 @@ export default function EventEditor() {
   const [picking, setPicking] = useState(false)
   const [editingInfo, setEditingInfo] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pdfLib = useRef<typeof import('../lib/pdf') | null>(null)
   const nav = useNavigate()
   const toast = useToast()
 
@@ -98,25 +98,25 @@ export default function EventEditor() {
     change([...items, { id: uid(), kind: 'break', song_id: null, song_key: null, transition_type: null, transition: null, notes: null, label: `Fin del set ${sets} — intermedio`, speaker: null }])
   }
 
-  // El módulo de PDF se precarga al abrir el diálogo: compartir debe ocurrir justo después del toque.
-  const openPdf = () => {
-    setPdfOpen(true)
-    import('../lib/pdf').then((m) => (pdfLib.current = m))
+  // Importante: sin awaits antes de compartir/descargar, Safari exige que ocurra dentro del toque.
+  const buildPdf = (mode: PdfMode) => {
+    const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
+    return { doc: buildSetlistPdf(event, full, songMap, mode), name: pdfFileName(event, mode) }
   }
+  const eventUrl = `${location.origin}${import.meta.env.BASE_URL}#/evento/${event.id}`
+  const shareText = `Setlist de ${event.name} (${fmtDate(event.event_date)})`
 
-  const sendWhatsApp = async (mode: PdfMode) => {
+  const sendWhatsApp = (mode: PdfMode) => {
     try {
-      const lib = pdfLib.current ?? (await import('../lib/pdf'))
-      const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
-      const doc = lib.buildSetlistPdf(event, full, songMap, mode)
-      const name = lib.pdfFileName(event, mode)
-      const text = `Setlist ${event.name} · ${fmtDate(event.event_date)}`
-      const r = await lib.sharePdfFile(doc, name, text)
+      const { doc, name } = buildPdf(mode)
+      const r = sharePdfFile(doc, name, shareText)
       if (r === 'unsupported') {
         // En computador no se pueden adjuntar archivos: se descarga y se abre WhatsApp para adjuntarlo.
-        lib.downloadPdf(doc, name)
-        window.open(`https://wa.me/?text=${encodeURIComponent(`${text} (adjunto el PDF)`)}`, '_blank', 'noopener')
+        downloadPdf(doc, name)
+        window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText} - adjunto el PDF`)}`, '_blank', 'noopener')
         toast('PDF descargado: adjúntalo en el chat de WhatsApp')
+      } else {
+        r.catch((e) => toast(`No se pudo compartir: ${errMsg(e)}`))
       }
       setPdfOpen(false)
     } catch (e) {
@@ -124,31 +124,31 @@ export default function EventEditor() {
     }
   }
 
-  const pdf = async (mode: PdfMode) => {
+  const pdf = (mode: PdfMode) => {
     try {
-      const { buildSetlistPdf, pdfFileName, downloadPdf } = await import('../lib/pdf')
-      const full = items.map((it, i) => ({ ...it, event_id: event.id, position: i }))
-      downloadPdf(buildSetlistPdf(event, full, songMap, mode), pdfFileName(event, mode))
-      toast('PDF descargado')
+      const { doc, name } = buildPdf(mode)
+      const r = downloadPdf(doc, name)
+      if (r === 'downloaded') toast('PDF descargado')
+      setPdfOpen(false)
     } catch (e) {
       toast(`No se pudo generar el PDF: ${errMsg(e)}`)
     }
-    setPdfOpen(false)
   }
 
-  const shareLink = async () => {
-    const url = `${location.origin}${import.meta.env.BASE_URL}#/evento/${event.id}`
-    const text = `Setlist de ${event.name} (${fmtDate(event.event_date)})`
+  const shareMore = () => {
     if (navigator.share) {
-      try {
-        await navigator.share({ title: text, text, url })
-        return
-      } catch {
-        /* cancelado */
-      }
+      navigator.share({ title: shareText, text: shareText, url: eventUrl }).catch(() => {})
+    } else {
+      copyLink()
     }
-    await navigator.clipboard?.writeText(url)
-    toast('Link copiado')
+    setShareOpen(false)
+  }
+  const copyLink = () => {
+    navigator.clipboard?.writeText(eventUrl).then(
+      () => toast('Link copiado'),
+      () => toast(eventUrl),
+    )
+    setShareOpen(false)
   }
 
   return (
@@ -187,10 +187,10 @@ export default function EventEditor() {
           {missingKey > 0 && <span className="tag warn">{missingKey} sin tono</span>}
         </div>
         <div className="row" style={{ marginTop: 12 }}>
-          <button className="btn amber" onClick={openPdf} disabled={!items.length}>
+          <button className="btn amber" onClick={() => setPdfOpen(true)} disabled={!items.length}>
             <Icon.pdf /> PDF
           </button>
-          <button className="btn" onClick={shareLink}>
+          <button className="btn" onClick={() => setShareOpen(true)}>
             <Icon.share /> Compartir
           </button>
           <Link className="btn" to={`/proponer?evento=${event.id}`}>
@@ -261,6 +261,29 @@ export default function EventEditor() {
             <p className="small muted" style={{ marginTop: 4 }}>
               En el teléfono se abre el menú para compartir con el PDF adjunto: elige WhatsApp y el chat de la banda.
             </p>
+          </div>
+        </Modal>
+      )}
+      {shareOpen && (
+        <Modal title="Compartir setlist" onClose={() => setShareOpen(false)}>
+          <div className="stack">
+            <a
+              className="btn whatsapp"
+              style={{ width: '100%' }}
+              href={`https://wa.me/?text=${encodeURIComponent(`${shareText}: ${eventUrl}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setShareOpen(false)}
+            >
+              <Icon.whatsapp /> Enviar link por WhatsApp
+            </a>
+            <button className="btn" style={{ width: '100%' }} onClick={shareMore}>
+              <Icon.share /> Más opciones…
+            </button>
+            <button className="btn ghost" style={{ width: '100%' }} onClick={copyLink}>
+              Copiar link
+            </button>
+            <p className="small muted">El link abre este show en la app (hay que ingresar el código de banda la primera vez).</p>
           </div>
         </Modal>
       )}
