@@ -922,15 +922,6 @@ input[type='checkbox'] {
   border-radius: 2px;
   animation: splash-rule 0.5s ease-out 1.25s both;
 }
-.splash-sub {
-  margin: 4px 0 0;
-  font-family: var(--font-ui);
-  font-size: 0.9rem;
-  letter-spacing: 6px;
-  text-transform: uppercase;
-  color: var(--amber);
-  animation: splash-fade 0.5s ease-out 1.4s both;
-}
 @keyframes splash-drop {
   from {
     opacity: 0;
@@ -975,20 +966,11 @@ input[type='checkbox'] {
     width: min(52vw, 230px);
   }
 }
-@keyframes splash-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .splash-logo,
   .splash-horns,
   .splash-tail,
-  .splash-name span,
-  .splash-sub {
+  .splash-name span {
     animation: none;
   }
   .splash-rule {

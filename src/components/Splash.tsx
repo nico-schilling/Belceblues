@@ -56,7 +56,6 @@ export default function Splash() {
         ))}
       </h1>
       <div className="splash-rule" />
-      <p className="splash-sub">Setlists</p>
     </div>
   )
 }
