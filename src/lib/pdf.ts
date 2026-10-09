@@ -215,32 +215,59 @@ export function pdfFileName(event: EventRow, mode: PdfMode) {
   return `setlist-${slug || 'belceblues'}${event.event_date ? '-' + event.event_date : ''}-${mode === 'stage' ? 'escenario' : 'detallado'}.pdf`
 }
 
-/** Descarga el PDF directamente al dispositivo. */
-export function downloadPdf(doc: jsPDF, name: string) {
-  const url = URL.createObjectURL(doc.output('blob'))
+/** iPhone/iPad (incluye iPadOS, que se presenta como Mac con pantalla táctil). */
+export function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function pdfFile(doc: jsPDF, name: string) {
+  return new File([doc.output('blob')], name, { type: 'application/pdf' })
+}
+
+/**
+ * Entrega el PDF al usuario. Debe llamarse directo desde el toque (sin awaits antes),
+ * porque Safari bloquea compartir/abrir ventanas fuera del gesto.
+ * - Computador / Android: descarga el archivo.
+ * - iPhone/iPad: iOS no permite descargas desde la app instalada, así que abre la hoja
+ *   de compartir (Guardar en Archivos, Imprimir, WhatsApp…) o, si no se puede, el visor de PDF.
+ */
+export function downloadPdf(doc: jsPDF, name: string): 'downloaded' | 'shared' | 'opened' {
+  const file = pdfFile(doc, name)
+  if (isIOS()) {
+    if (navigator.canShare?.({ files: [file] })) {
+      navigator.share({ files: [file] }).catch(() => {})
+      return 'shared'
+    }
+    const url = URL.createObjectURL(file)
+    if (!window.open(url, '_blank')) location.href = url
+    return 'opened'
+  }
+  const url = URL.createObjectURL(file)
   const a = document.createElement('a')
   a.href = url
   a.download = name
   a.rel = 'noopener'
+  a.style.display = 'none'
   document.body.appendChild(a)
   a.click()
   a.remove()
   // Safari necesita que la URL siga viva un rato después del click.
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  return 'downloaded'
 }
 
 /**
  * Abre el menú de compartir del teléfono con el PDF adjunto (para elegir WhatsApp).
  * Devuelve 'unsupported' si el navegador no puede compartir archivos (ej: computador).
  */
-export async function sharePdfFile(doc: jsPDF, name: string, text: string): Promise<'shared' | 'cancelled' | 'unsupported'> {
-  const file = new File([doc.output('blob')], name, { type: 'application/pdf' })
+export function sharePdfFile(doc: jsPDF, name: string, text: string): Promise<'shared' | 'cancelled'> | 'unsupported' {
+  const file = pdfFile(doc, name)
   if (!navigator.canShare?.({ files: [file] })) return 'unsupported'
-  try {
-    await navigator.share({ files: [file], text })
-    return 'shared'
-  } catch (e) {
-    if ((e as Error).name === 'AbortError') return 'cancelled'
-    throw e
-  }
+  return navigator.share({ files: [file], text }).then(
+    () => 'shared' as const,
+    (e: Error) => {
+      if (e.name === 'AbortError') return 'cancelled' as const
+      throw e
+    },
+  )
 }
