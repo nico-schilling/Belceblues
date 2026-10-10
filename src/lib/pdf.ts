@@ -215,34 +215,16 @@ export function pdfFileName(event: EventRow, mode: PdfMode) {
   return `setlist-${slug || 'belceblues'}${event.event_date ? '-' + event.event_date : ''}-${mode === 'stage' ? 'escenario' : 'detallado'}.pdf`
 }
 
-/** iPhone/iPad (incluye iPadOS, que se presenta como Mac con pantalla táctil). */
-export function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-}
-
 function pdfFile(doc: jsPDF, name: string) {
   return new File([doc.output('blob')], name, { type: 'application/pdf' })
 }
 
 /**
- * Entrega el PDF al usuario. Debe llamarse directo desde el toque (sin awaits antes),
- * porque Safari bloquea compartir/abrir ventanas fuera del gesto.
- * - Computador / Android: descarga el archivo.
- * - iPhone/iPad: iOS no permite descargas desde la app instalada, así que abre la hoja
- *   de compartir (Guardar en Archivos, Imprimir, WhatsApp…) o, si no se puede, el visor de PDF.
+ * Descarga el PDF (en iPhone, Safari lo muestra de inmediato en su visor).
+ * Debe llamarse directo desde el toque, sin awaits antes.
  */
-export function downloadPdf(doc: jsPDF, name: string): 'downloaded' | 'shared' | 'opened' {
-  const file = pdfFile(doc, name)
-  if (isIOS()) {
-    if (navigator.canShare?.({ files: [file] })) {
-      navigator.share({ files: [file] }).catch(() => {})
-      return 'shared'
-    }
-    const url = URL.createObjectURL(file)
-    if (!window.open(url, '_blank')) location.href = url
-    return 'opened'
-  }
-  const url = URL.createObjectURL(file)
+export function downloadPdf(doc: jsPDF, name: string) {
+  const url = URL.createObjectURL(pdfFile(doc, name))
   const a = document.createElement('a')
   a.href = url
   a.download = name
@@ -253,7 +235,6 @@ export function downloadPdf(doc: jsPDF, name: string): 'downloaded' | 'shared' |
   a.remove()
   // Safari necesita que la URL siga viva un rato después del click.
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
-  return 'downloaded'
 }
 
 /**

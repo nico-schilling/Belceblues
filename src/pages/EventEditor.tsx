@@ -127,8 +127,8 @@ export default function EventEditor() {
   const pdf = (mode: PdfMode) => {
     try {
       const { doc, name } = buildPdf(mode)
-      const r = downloadPdf(doc, name)
-      if (r === 'downloaded') toast('PDF descargado')
+      downloadPdf(doc, name)
+      toast('PDF listo')
       setPdfOpen(false)
     } catch (e) {
       toast(`No se pudo generar el PDF: ${errMsg(e)}`)
