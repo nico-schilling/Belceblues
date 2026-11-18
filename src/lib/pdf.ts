@@ -96,11 +96,17 @@ export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Ma
     }
     if (it.kind === 'cue') {
       const head = clean(`${(it.label || 'Momento').toUpperCase()}${it.speaker ? `  -  ${it.speaker}` : ''}`)
+      const textW = W - 2 * M - 22
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(stage ? 12 : 9.5)
+      const headLines: string[] = doc.splitTextToSize(`» ${head}`, textW)
+      const hh = stage ? 5.2 : 4.1
       doc.setFont('times', 'italic')
       doc.setFontSize(stage ? 12 : 10)
-      const lines: string[] = it.notes ? doc.splitTextToSize(clean(it.notes), W - 2 * M - 22) : []
+      const lines: string[] = it.notes ? doc.splitTextToSize(clean(it.notes), textW) : []
       const lh = stage ? 5.2 : 4.3
-      const h = (stage ? 8 : 6.5) + lines.length * lh + 2
+      const headH = headLines.length * hh
+      const h = (stage ? 3 : 2.4) + headH + (lines.length ? 1 + lines.length * lh : 0) + 2
       ensure(h + 3)
       doc.setFillColor(232, 238, 243)
       doc.rect(M + 14, y - 1, W - 2 * M - 14, h, 'F')
@@ -109,12 +115,12 @@ export function buildSetlistPdf(event: EventRow, items: SetlistItem[], songs: Ma
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(stage ? 12 : 9.5)
       doc.setTextColor(...BLUE)
-      doc.text(`» ${head}`, M + 18, y + (stage ? 4.6 : 3.6))
+      doc.text(headLines, M + 18, y + (stage ? 4.6 : 3.6), { lineHeightFactor: 1.15 })
       if (lines.length) {
         doc.setFont('times', 'italic')
         doc.setFontSize(stage ? 12 : 10)
         doc.setTextColor(...INK)
-        doc.text(lines, M + 18, y + (stage ? 9.6 : 7.8))
+        doc.text(lines, M + 18, y + (stage ? 4.6 : 3.6) + headH + 1, { lineHeightFactor: 1.15 })
       }
       y += h + 3
       return
