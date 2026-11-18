@@ -26,7 +26,13 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null)
 
-const errMsg = (e: unknown) => (e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
+const rawMsg = (e: unknown) => (e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
+
+/** Mensaje legible; traduce los errores de red de cada navegador ("Load failed" en Safari). */
+const errMsg = (e: unknown) => {
+  const m = rawMsg(e)
+  return /load failed|failed to fetch|networkerror|network request failed/i.test(m) ? 'No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.' : m
+}
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [songs, setSongs] = useState<Song[]>([])
