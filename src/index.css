@@ -842,6 +842,20 @@ input[type='checkbox'] {
   background: linear-gradient(180deg, #232529, #1c1d20);
   margin-left: 22px;
 }
+.sl-cue .sl-title,
+.sl-cue .sl-sub {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+.cue-notes {
+  margin-top: 2px;
+  font-family: var(--font-note);
+  font-size: 0.86rem;
+  color: #aebfcc;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .sl-cue .sl-title {
   font-family: var(--font-note);
   font-weight: 400;

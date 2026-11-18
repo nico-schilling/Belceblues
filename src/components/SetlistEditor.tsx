@@ -230,7 +230,8 @@ function CueRow({ item, open, onToggle, onUpdate, onRemove }: { item: DraftItem;
         </span>
         <button className="grow" style={{ all: 'unset', cursor: 'pointer', minWidth: 0, flex: 1 }} onClick={onToggle} aria-expanded={open}>
           <div className="sl-title">{item.label || 'Momento entre canciones'}</div>
-          {(item.speaker || item.notes) && <div className="sl-sub">{[item.speaker, item.notes].filter(Boolean).join(' · ')}</div>}
+          {item.speaker && <div className="sl-sub">🎤 {item.speaker}</div>}
+          {item.notes && <div className="cue-notes">{item.notes}</div>}
         </button>
         <button className="btn icon ghost" onClick={onToggle} aria-label="Editar momento">
           <Icon.edit />
